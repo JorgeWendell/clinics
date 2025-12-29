@@ -1,4 +1,6 @@
 import { createAuthClient } from "better-auth/react";
+import { auth } from "./auth";
+import { customSessionClient } from "better-auth/client/plugins";
 
 // Detectar automaticamente a baseURL baseada no ambiente
 const getBaseURL = () => {
@@ -11,5 +13,6 @@ const getBaseURL = () => {
 };
 
 export const authClient = createAuthClient({
+  plugins: [customSessionClient<typeof auth>()],
   baseURL: getBaseURL(),
 });

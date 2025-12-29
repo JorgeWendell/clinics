@@ -32,7 +32,18 @@ const ClinicForm = () => {
       await createClinic(data.name);
       toast.success("Clínica cadastrada com sucesso");
       form.reset();
-    } catch (error) {
+    } catch (error: any) {
+      // redirect() do Next.js lança uma exceção especial que não é um erro real
+      // Verifica se é um redirect de diferentes formas possíveis
+      const isRedirect =
+        error?.digest?.startsWith("NEXT_REDIRECT") ||
+        error?.digest?.includes("redirect") ||
+        error?.message?.includes("NEXT_REDIRECT") ||
+        error?.name === "RedirectError";
+
+      if (isRedirect) {
+        return; // Ignora o redirect, que é o comportamento esperado
+      }
       console.error(error);
       toast.error("Erro ao cadastrar clínica");
     }
