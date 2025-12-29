@@ -5,9 +5,9 @@ import {
   LayoutDashboard,
   LogOut,
   Moon,
+  PawPrint,
   Stethoscope,
   Sun,
-  UsersRound,
 } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -59,9 +59,9 @@ const data = {
           url: "/doctors",
         },
         {
-          title: "Pacientes",
-          icon: UsersRound,
-          url: "/patients",
+          title: "Pets",
+          icon: PawPrint,
+          url: "/pets",
         },
       ],
     },

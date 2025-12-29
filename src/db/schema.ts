@@ -108,7 +108,7 @@ export const clinicsTable = pgTable("clinics", {
 
 export const clinicTableRelations = relations(clinicsTable, ({ many }) => ({
   doctors: many(doctorsTable),
-  patients: many(patientsTable),
+  pets: many(petsTable),
   appointments: many(appointmentsTable),
   usersToClinics: many(userToClinicsTable),
 }));
@@ -134,25 +134,22 @@ export const doctorsTable = pgTable("doctors", {
     .notNull(),
 });
 
-export const doctorTableRelations = relations(doctorsTable, ({ many,one }) => ({
-  clinic: one(clinicsTable, {
-    fields: [doctorsTable.clinicId],
-    references: [clinicsTable.id],
+export const doctorTableRelations = relations(
+  doctorsTable,
+  ({ many, one }) => ({
+    clinic: one(clinicsTable, {
+      fields: [doctorsTable.clinicId],
+      references: [clinicsTable.id],
+    }),
+    appointments: many(appointmentsTable),
   }),
-  appointments: many(appointmentsTable),
-}));
+);
 
-export const patientsSexEnum = pgEnum("patients_sex", ["male", "female"]);
-
-export const patientsTable = pgTable("patients", {
+export const tutorsTable = pgTable("tutors", {
   id: text("id").primaryKey(),
-  clinicId: text("clinic_id")
-    .notNull()
-    .references(() => clinicsTable.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   email: text("email").notNull(),
   phone: text("phone").notNull(),
-  sex: patientsSexEnum("sex").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at")
     .defaultNow()
@@ -160,20 +157,58 @@ export const patientsTable = pgTable("patients", {
     .notNull(),
 });
 
-export const patientTableRelations = relations(patientsTable, ({ one, many }) => ({
+export const petsSexEnum = pgEnum("pets_sex", ["Macho", "Femea"]);
+
+export const petsTypeEnum = pgEnum("pets_type", [
+  "canino",
+  "felino",
+  "ave",
+  "roedor",
+  "reptil",
+  "outro",
+]);
+
+export const petsTable = pgTable("pets", {
+  id: text("id").primaryKey(),
+  clinicId: text("clinic_id")
+    .notNull()
+    .references(() => clinicsTable.id, { onDelete: "cascade" }),
+  tutorId: text("tutor_id")
+    .notNull()
+    .references(() => tutorsTable.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  race: text("name").notNull(),
+  type: petsTypeEnum("type").notNull(),
+  sex: petsSexEnum("sex").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at")
+    .defaultNow()
+    .$onUpdate(() => new Date())
+    .notNull(),
+});
+
+export const petTableRelations = relations(petsTable, ({ one, many }) => ({
   clinic: one(clinicsTable, {
-    fields: [patientsTable.clinicId],
+    fields: [petsTable.clinicId],
     references: [clinicsTable.id],
   }),
+  tutor: one(tutorsTable, {
+    fields: [petsTable.tutorId],
+    references: [tutorsTable.id],
+  }),
   appointments: many(appointmentsTable),
+}));
+
+export const tutorTableRelations = relations(tutorsTable, ({ many }) => ({
+  pets: many(petsTable),
 }));
 
 export const appointmentsTable = pgTable("appointments", {
   id: text("id").primaryKey(),
   date: date("date").notNull(),
-  patientId: text("patient_id")
+  petId: text("pet_id")
     .notNull()
-    .references(() => patientsTable.id, { onDelete: "cascade" }),
+    .references(() => petsTable.id, { onDelete: "cascade" }),
   doctorId: text("doctor_id")
     .notNull()
     .references(() => doctorsTable.id, { onDelete: "cascade" }),
@@ -190,9 +225,9 @@ export const appointmentsTable = pgTable("appointments", {
 export const appointmentTableRelations = relations(
   appointmentsTable,
   ({ one }) => ({
-    patient: one(patientsTable, {
-      fields: [appointmentsTable.patientId],
-      references: [patientsTable.id],
+    pet: one(petsTable, {
+      fields: [appointmentsTable.petId],
+      references: [petsTable.id],
     }),
     doctor: one(doctorsTable, {
       fields: [appointmentsTable.doctorId],

@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import {  userToClinicsTable } from "@/db/schema";
+import { userToClinicsTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { eq } from "drizzle-orm";
 import { headers } from "next/headers";
@@ -12,10 +12,7 @@ const DashboardPage = async () => {
   if (!session?.user) {
     redirect("/authentication");
   }
-  const clinics = await db.query.userToClinicsTable.findMany({
-    where: eq(userToClinicsTable.userId, session.user.id),
-  });
-  if (clinics.length === 0) {
+  if (!session.user.clinic) {
     redirect("/clinic-form");
   }
   return (
