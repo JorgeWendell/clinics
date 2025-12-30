@@ -13,15 +13,29 @@ import { useState } from "react";
 
 const AddPetButton = () => {
   const [open, setOpen] = useState(false);
+  const [key, setKey] = useState(0);
+
+  const handleOpenChange = (isOpen: boolean) => {
+    setOpen(isOpen);
+    if (isOpen) {
+      setKey((prev) => prev + 1);
+    }
+  };
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button>
           <PlusIcon className="h-4 w-4" />
           Adicionar Pet
         </Button>
       </DialogTrigger>
-      <UpsertPetForm onSuccess={() => setOpen(false)} />
+      {open && (
+        <UpsertPetForm
+          key={`new-pet-${key}`}
+          onSuccess={() => setOpen(false)}
+        />
+      )}
     </Dialog>
   );
 };

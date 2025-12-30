@@ -3,7 +3,12 @@
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogTrigger } from "@/components/ui/dialog";
 import { petsTable } from "@/db/schema";
-import { PencilIcon, TrashIcon, SearchIcon } from "lucide-react";
+import {
+  PencilIcon,
+  TrashIcon,
+  SearchIcon,
+  MoreHorizontalIcon,
+} from "lucide-react";
 import UpsertPetForm from "./upsert-pet-form";
 import { useState, useMemo } from "react";
 import {
@@ -31,6 +36,14 @@ import {
   PaginationPrevious,
   PaginationEllipsis,
 } from "@/components/ui/pagination";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface PetsTableProps {
   pets: (typeof petsTable.$inferSelect & {
@@ -47,14 +60,15 @@ const ITEMS_PER_PAGE = 15;
 
 const PetsTable = ({ pets }: PetsTableProps) => {
   const [editingPet, setEditingPet] = useState<
-    (typeof petsTable.$inferSelect & {
-      tutor?: {
-        id: string;
-        name: string;
-        email: string;
-        phone: string;
-      };
-    }) | null
+    | (typeof petsTable.$inferSelect & {
+        tutor?: {
+          id: string;
+          name: string;
+          email: string;
+          phone: string;
+        };
+      })
+    | null
   >(null);
   const [isUpsertDialogOpen, setIsUpsertDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -86,7 +100,7 @@ const PetsTable = ({ pets }: PetsTableProps) => {
   const endIndex = startIndex + ITEMS_PER_PAGE;
   const paginatedPets = filteredPets.slice(startIndex, endIndex);
 
-  const handleEdit = (pet: typeof pets[0]) => {
+  const handleEdit = (pet: (typeof pets)[0]) => {
     setEditingPet(pet);
     setIsUpsertDialogOpen(true);
   };
@@ -110,6 +124,18 @@ const PetsTable = ({ pets }: PetsTableProps) => {
       outro: "Outro",
     };
     return labels[type] || type;
+  };
+
+  const formatPhone = (phone: string | undefined) => {
+    if (!phone) return "-";
+    const cleaned = phone.replace(/\D/g, "");
+    if (cleaned.length === 11) {
+      return `(${cleaned.slice(0, 2)})${cleaned.slice(2, 7)}-${cleaned.slice(7)}`;
+    }
+    if (cleaned.length === 10) {
+      return `(${cleaned.slice(0, 2)})${cleaned.slice(2, 6)}-${cleaned.slice(6)}`;
+    }
+    return phone;
   };
 
   const getPageNumbers = () => {
@@ -151,34 +177,34 @@ const PetsTable = ({ pets }: PetsTableProps) => {
     <>
       <div className="space-y-4">
         <div className="relative w-fit">
-          <SearchIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <SearchIcon className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
           <Input
             placeholder="Buscar por nome do pet ou nome do tutor..."
             value={searchTerm}
             onChange={(e) => handleSearchChange(e.target.value)}
-            className="pl-9 w-80"
+            className="w-80 pl-9"
           />
         </div>
         <div className="rounded-md border">
           <table className="w-full">
             <thead>
-              <tr className="border-b bg-muted/50">
-                <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">
+              <tr className="bg-muted/50 border-b">
+                <th className="text-muted-foreground h-12 px-4 text-left align-middle font-medium">
                   Nome do Pet
                 </th>
-                <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">
+                <th className="text-muted-foreground h-12 px-4 text-left align-middle font-medium">
                   Tipo
                 </th>
-                <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">
+                <th className="text-muted-foreground h-12 px-4 text-left align-middle font-medium">
                   Sexo
                 </th>
-                <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">
+                <th className="text-muted-foreground h-12 px-4 text-left align-middle font-medium">
                   Nome Tutor
                 </th>
-                <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">
+                <th className="text-muted-foreground h-12 px-4 text-left align-middle font-medium">
                   Fone Tutor
                 </th>
-                <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">
+                <th className="text-muted-foreground h-12 px-4 text-left align-middle font-medium">
                   Ações
                 </th>
               </tr>
@@ -188,7 +214,7 @@ const PetsTable = ({ pets }: PetsTableProps) => {
                 <tr>
                   <td
                     colSpan={6}
-                    className="h-24 text-center text-muted-foreground"
+                    className="text-muted-foreground h-24 text-center"
                   >
                     {searchTerm
                       ? "Nenhum pet encontrado"
@@ -207,49 +233,60 @@ const PetsTable = ({ pets }: PetsTableProps) => {
                       {pet.tutor?.name || "-"}
                     </td>
                     <td className="p-4 align-middle">
-                      {pet.tutor?.phone || "-"}
+                      {formatPhone(pet.tutor?.phone)}
                     </td>
                     <td className="p-4 align-middle">
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleEdit(pet)}
-                        >
-                          <PencilIcon className="h-4 w-4" />
-                        </Button>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button variant="outline" size="sm">
-                              <TrashIcon className="h-4 w-4" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>
-                                Tem certeza que deseja deletar o pet "{pet.name}"?
-                              </AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Essa ação não pode ser revertida. Isso irá
-                                remover o pet da clínica e todas as consultas
-                                agendadas com ele.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={() => handleDelete(pet.id)}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm">
+                            <MoreHorizontalIcon className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>{pet.name}</DropdownMenuLabel>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => handleEdit(pet)}>
+                            <PencilIcon className="mr-2 h-4 w-4" />
+                            Editar
+                          </DropdownMenuItem>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <DropdownMenuItem
+                                onSelect={(e) => e.preventDefault()}
+                                variant="destructive"
                               >
-                                {deletePetAction.isPending ? (
-                                  <Loader2 className="size-4 animate-spin" />
-                                ) : (
-                                  "Deletar"
-                                )}
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </div>
+                                <TrashIcon className="mr-2 h-4 w-4" />
+                                Excluir
+                              </DropdownMenuItem>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>
+                                  Tem certeza que deseja deletar o pet "
+                                  {pet.name}"?
+                                </AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Essa ação não pode ser revertida. Isso irá
+                                  remover o pet da clínica e todas as consultas
+                                  agendadas com ele.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => handleDelete(pet.id)}
+                                >
+                                  {deletePetAction.isPending ? (
+                                    <Loader2 className="size-4 animate-spin" />
+                                  ) : (
+                                    "Deletar"
+                                  )}
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </td>
                   </tr>
                 ))
@@ -337,4 +374,3 @@ const PetsTable = ({ pets }: PetsTableProps) => {
 };
 
 export default PetsTable;
-

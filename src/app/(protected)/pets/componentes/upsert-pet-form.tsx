@@ -25,6 +25,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { NumericFormat } from "react-number-format";
 
 import { zodResolver } from "@hookform/resolvers/zod";
 
@@ -128,7 +129,15 @@ const UpsertPetForm = ({ pet, onSuccess }: UpsertPetFormProps) => {
       toast.success(
         pet ? "Pet atualizado com sucesso" : "Pet adicionado com sucesso",
       );
-      form.reset();
+      form.reset({
+        name: "",
+        race: "",
+        type: "canino",
+        sex: "Macho",
+        tutorName: "",
+        tutorEmail: "",
+        tutorPhone: "",
+      });
       onSuccess?.();
     },
     onError: (error) => {
@@ -293,15 +302,39 @@ const UpsertPetForm = ({ pet, onSuccess }: UpsertPetFormProps) => {
               <FormField
                 control={form.control}
                 name="tutorPhone"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Telefone</FormLabel>
-                    <FormControl>
-                      <Input {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                render={({ field }) => {
+                  const formatPhone = (value: string) => {
+                    if (!value) return "";
+                    const cleaned = value.replace(/\D/g, "");
+                    if (cleaned.length <= 2) {
+                      return cleaned;
+                    }
+                    if (cleaned.length <= 7) {
+                      return `(${cleaned.slice(0, 2)})${cleaned.slice(2)}`;
+                    }
+                    if (cleaned.length <= 10) {
+                      return `(${cleaned.slice(0, 2)})${cleaned.slice(2, 6)}-${cleaned.slice(6)}`;
+                    }
+                    return `(${cleaned.slice(0, 2)})${cleaned.slice(2, 7)}-${cleaned.slice(7, 11)}`;
+                  };
+
+                  return (
+                    <FormItem>
+                      <FormLabel>Telefone</FormLabel>
+                      <FormControl>
+                        <Input
+                          value={field.value || ""}
+                          onChange={(e) => {
+                            const formatted = formatPhone(e.target.value);
+                            field.onChange(formatted);
+                          }}
+                          maxLength={15}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
               />
             </TabsContent>
           </Tabs>
