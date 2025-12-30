@@ -39,6 +39,7 @@ export const upsertDoctor = actionClient
           clinicId,
         })
         .where(eq(doctorsTable.id, id));
+      revalidatePath("/doctors");
     } else {
       await db.insert(doctorsTable).values({
         ...parsedInput,
