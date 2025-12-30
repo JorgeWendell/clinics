@@ -29,6 +29,10 @@ import { NumericFormat } from "react-number-format";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
+import { upsertDoctor } from "@/actions/create-clinic/upsert-doctor";
+import { useAction } from "next-safe-action/hooks";
+import { toast } from "sonner";
+import { Loader2 } from "lucide-react";
 
 const doctorFormSchema = z
   .object({
@@ -68,7 +72,11 @@ const doctorFormSchema = z
     },
   );
 
-const UpsertDoctorForm = () => {
+interface UpsertDoctorFormProps {
+  onSuccess?: () => void;
+}
+
+const UpsertDoctorForm = ({ onSuccess }: UpsertDoctorFormProps) => {
   const form = useForm<z.infer<typeof doctorFormSchema>>({
     resolver: zodResolver(doctorFormSchema),
     defaultValues: {
@@ -83,8 +91,24 @@ const UpsertDoctorForm = () => {
     },
   });
 
+  const upsertDoctorAction = useAction(upsertDoctor, {
+    onSuccess: () => {
+      toast.success("Médico adicionado com sucesso");
+      form.reset();
+      onSuccess?.();
+    },
+    onError: (error) => {
+      toast.error("Erro ao adicionar médico");
+    },
+  });
+
   const onSubmit = (data: z.infer<typeof doctorFormSchema>) => {
-    console.log(data);
+    upsertDoctorAction.execute({
+      ...data,
+      availableFromWeekDay: parseInt(data.availableFromWeekDay),
+      availableToWeekDay: parseInt(data.availableToWeekDay),
+      appointmentPriceInCents: data.appointmentPriceInCents * 100,
+    });
   };
 
   return (
@@ -123,7 +147,7 @@ const UpsertDoctorForm = () => {
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    <SelectItem value="cardiologist">Veterinária</SelectItem>
+                    <SelectItem value="veterinarian">Veterinária</SelectItem>
                   </SelectContent>
                 </Select>
                 <FormMessage />
@@ -320,7 +344,12 @@ const UpsertDoctorForm = () => {
             )}
           />
           <DialogFooter>
-            <Button type="submit" disabled={form.formState.isSubmitting}>
+            <Button type="submit" disabled={upsertDoctorAction.isPending}>
+              {upsertDoctorAction.isPending ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                "Adicionar"
+              )}
               Adicionar
             </Button>
           </DialogFooter>
