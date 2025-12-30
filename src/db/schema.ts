@@ -177,7 +177,7 @@ export const petsTable = pgTable("pets", {
     .notNull()
     .references(() => tutorsTable.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
-  race: text("name").notNull(),
+  race: text("race").notNull(),
   type: petsTypeEnum("type").notNull(),
   sex: petsSexEnum("sex").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
