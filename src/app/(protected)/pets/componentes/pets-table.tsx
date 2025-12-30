@@ -10,7 +10,7 @@ import {
   MoreHorizontalIcon,
 } from "lucide-react";
 import UpsertPetForm from "./upsert-pet-form";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -59,6 +59,7 @@ interface PetsTableProps {
 const ITEMS_PER_PAGE = 15;
 
 const PetsTable = ({ pets }: PetsTableProps) => {
+  const [mounted, setMounted] = useState(false);
   const [editingPet, setEditingPet] = useState<
     | (typeof petsTable.$inferSelect & {
         tutor?: {
@@ -73,6 +74,10 @@ const PetsTable = ({ pets }: PetsTableProps) => {
   const [isUpsertDialogOpen, setIsUpsertDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const deletePetAction = useAction(deletePet, {
     onSuccess: () => {
@@ -352,23 +357,25 @@ const PetsTable = ({ pets }: PetsTableProps) => {
           </Pagination>
         )}
       </div>
-      <Dialog
-        open={isUpsertDialogOpen}
-        onOpenChange={(open) => {
-          setIsUpsertDialogOpen(open);
-          if (!open) {
-            setEditingPet(null);
-          }
-        }}
-      >
-        <UpsertPetForm
-          pet={editingPet || undefined}
-          onSuccess={() => {
-            setIsUpsertDialogOpen(false);
-            setEditingPet(null);
+      {mounted && (
+        <Dialog
+          open={isUpsertDialogOpen}
+          onOpenChange={(open) => {
+            setIsUpsertDialogOpen(open);
+            if (!open) {
+              setEditingPet(null);
+            }
           }}
-        />
-      </Dialog>
+        >
+          <UpsertPetForm
+            pet={editingPet || undefined}
+            onSuccess={() => {
+              setIsUpsertDialogOpen(false);
+              setEditingPet(null);
+            }}
+          />
+        </Dialog>
+      )}
     </>
   );
 };
