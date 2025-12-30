@@ -56,12 +56,14 @@ const rescheduleAppointmentFormSchema = z.object({
 interface RescheduleAppointmentFormProps {
   appointment?: Appointment;
   doctors: (typeof doctorsTable.$inferSelect)[];
+  appointments?: Appointment[];
   onSuccess?: () => void;
 }
 
 const RescheduleAppointmentForm = ({
   appointment,
   doctors,
+  appointments = [],
   onSuccess,
 }: RescheduleAppointmentFormProps) => {
   const router = useRouter();
@@ -125,17 +127,40 @@ const RescheduleAppointmentForm = ({
     const now = new Date();
     const isToday = selectedDate.toDateString() === now.toDateString();
 
+    let filteredTimes = times;
     if (isToday) {
       const currentTime = now.getHours() * 60 + now.getMinutes();
-      return times.filter((time) => {
+      filteredTimes = times.filter((time) => {
         const [hour, minute] = time.split(":").map(Number);
         const timeInMinutes = hour * 60 + minute;
         return timeInMinutes > currentTime;
       });
     }
 
-    return times;
-  }, [selectedDoctor, selectedDate]);
+    const dateString = selectedDate.toISOString().split("T")[0];
+    const occupiedTimes = appointments
+      .filter((apt) => {
+        const aptDateString =
+          typeof apt.date === "string"
+            ? apt.date
+            : apt.date instanceof Date
+              ? apt.date.toISOString().split("T")[0]
+              : "";
+        return (
+          apt.doctorId === appointment?.doctorId &&
+          aptDateString === dateString &&
+          apt.id !== appointment?.id &&
+          apt.time
+        );
+      })
+      .map((apt) => apt.time)
+      .filter((time): time is string => !!time);
+
+    return filteredTimes.map((time) => ({
+      time,
+      isOccupied: occupiedTimes.includes(time),
+    }));
+  }, [selectedDoctor, selectedDate, appointments, appointment?.doctorId, appointment?.id]);
 
   const updateAppointmentAction = useAction(updateAppointment, {
     onSuccess: () => {
@@ -243,12 +268,18 @@ const RescheduleAppointmentForm = ({
                         Nenhum horário disponível
                       </div>
                     ) : (
-                      availableTimes.map((time) => {
+                      availableTimes.map(({ time, isOccupied }) => {
                         const [hour, minute] = time.split(":");
                         const displayTime = `${hour}:${minute}`;
                         return (
-                          <SelectItem key={time} value={time}>
-                            {displayTime}
+                          <SelectItem
+                            key={time}
+                            value={time}
+                            disabled={isOccupied}
+                          >
+                            {isOccupied
+                              ? `${displayTime} - INDISPONÍVEL`
+                              : displayTime}
                           </SelectItem>
                         );
                       })

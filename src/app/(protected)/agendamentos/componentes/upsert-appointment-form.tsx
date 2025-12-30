@@ -81,6 +81,7 @@ interface UpsertAppointmentFormProps {
     };
   })[];
   doctors: (typeof doctorsTable.$inferSelect)[];
+  appointments?: Appointment[];
   onSuccess?: () => void;
 }
 
@@ -88,6 +89,7 @@ const UpsertAppointmentForm = ({
   appointment,
   pets,
   doctors,
+  appointments = [],
   onSuccess,
 }: UpsertAppointmentFormProps) => {
   const router = useRouter();
@@ -109,19 +111,16 @@ const UpsertAppointmentForm = ({
   const selectedDate = form.watch("date");
   const selectedDoctor = doctors.find((d) => d.id === selectedDoctorId);
 
-  // Função para gerar horários disponíveis
   const availableTimes = useMemo(() => {
     if (!selectedDoctor || !selectedDate) {
       return [];
     }
 
-    const selectedDayOfWeek = selectedDate.getDay(); // 0 = domingo, 6 = sábado
+    const selectedDayOfWeek = selectedDate.getDay();
 
-    // Verifica se o dia da semana está dentro da disponibilidade do médico
     const fromWeekDay = selectedDoctor.availableFromWeekDay;
     const toWeekDay = selectedDoctor.availableToWeekDay;
 
-    // Se o intervalo cruza o final de semana (ex: sexta a segunda)
     const isWeekendCross = fromWeekDay > toWeekDay;
     const isAvailableDay = isWeekendCross
       ? selectedDayOfWeek >= fromWeekDay || selectedDayOfWeek <= toWeekDay
@@ -131,7 +130,6 @@ const UpsertAppointmentForm = ({
       return [];
     }
 
-    // Parse dos horários de início e fim
     const [fromHour, fromMinute] = selectedDoctor.availableFromTime
       .split(":")
       .map(Number);
@@ -143,7 +141,6 @@ const UpsertAppointmentForm = ({
     let currentHour = fromHour;
     let currentMinute = fromMinute;
 
-    // Gera horários de 30 em 30 minutos
     while (
       currentHour < toHour ||
       (currentHour === toHour && currentMinute < toMinute)
@@ -151,7 +148,6 @@ const UpsertAppointmentForm = ({
       const timeString = `${currentHour.toString().padStart(2, "0")}:${currentMinute.toString().padStart(2, "0")}:00`;
       times.push(timeString);
 
-      // Adiciona 30 minutos
       currentMinute += 30;
       if (currentMinute >= 60) {
         currentMinute = 0;
@@ -159,21 +155,43 @@ const UpsertAppointmentForm = ({
       }
     }
 
-    // Se for hoje, remove horários passados
     const now = new Date();
     const isToday = selectedDate.toDateString() === now.toDateString();
 
+    let filteredTimes = times;
     if (isToday) {
       const currentTime = now.getHours() * 60 + now.getMinutes();
-      return times.filter((time) => {
+      filteredTimes = times.filter((time) => {
         const [hour, minute] = time.split(":").map(Number);
         const timeInMinutes = hour * 60 + minute;
         return timeInMinutes > currentTime;
       });
     }
 
-    return times;
-  }, [selectedDoctor, selectedDate]);
+    const dateString = selectedDate.toISOString().split("T")[0];
+    const occupiedTimes = appointments
+      .filter((apt) => {
+        const aptDateString =
+          typeof apt.date === "string"
+            ? apt.date
+            : apt.date instanceof Date
+              ? apt.date.toISOString().split("T")[0]
+              : "";
+        return (
+          apt.doctorId === selectedDoctorId &&
+          aptDateString === dateString &&
+          apt.id !== appointment?.id &&
+          apt.time
+        );
+      })
+      .map((apt) => apt.time)
+      .filter((time): time is string => !!time);
+
+    return filteredTimes.map((time) => ({
+      time,
+      isOccupied: occupiedTimes.includes(time),
+    }));
+  }, [selectedDoctor, selectedDate, selectedDoctorId, appointments, appointment?.id]);
 
   useEffect(() => {
     if (selectedDoctor) {
@@ -411,12 +429,18 @@ const UpsertAppointmentForm = ({
                         Nenhum horário disponível
                       </div>
                     ) : (
-                      availableTimes.map((time) => {
+                      availableTimes.map(({ time, isOccupied }) => {
                         const [hour, minute] = time.split(":");
                         const displayTime = `${hour}:${minute}`;
                         return (
-                          <SelectItem key={time} value={time}>
-                            {displayTime}
+                          <SelectItem
+                            key={time}
+                            value={time}
+                            disabled={isOccupied}
+                          >
+                            {isOccupied
+                              ? `${displayTime} - INDISPONÍVEL`
+                              : displayTime}
                           </SelectItem>
                         );
                       })

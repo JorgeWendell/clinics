@@ -10,7 +10,7 @@ import {
 import { PlusIcon } from "lucide-react";
 import UpsertAppointmentForm from "./upsert-appointment-form";
 import { useState } from "react";
-import { petsTable, doctorsTable } from "@/db/schema";
+import { petsTable, doctorsTable, appointmentsTable } from "@/db/schema";
 
 interface AddAppointmentButtonProps {
   pets: (typeof petsTable.$inferSelect & {
@@ -22,11 +22,23 @@ interface AddAppointmentButtonProps {
     };
   })[];
   doctors: (typeof doctorsTable.$inferSelect)[];
+  appointments?: (typeof appointmentsTable.$inferSelect & {
+    pet?: typeof petsTable.$inferSelect & {
+      tutor?: {
+        id: string;
+        name: string;
+        email: string;
+        phone: string;
+      };
+    };
+    doctor?: typeof doctorsTable.$inferSelect;
+  })[];
 }
 
 const AddAppointmentButton = ({
   pets,
   doctors,
+  appointments = [],
 }: AddAppointmentButtonProps) => {
   const [open, setOpen] = useState(false);
   const [key, setKey] = useState(0);
@@ -51,6 +63,7 @@ const AddAppointmentButton = ({
           key={`new-appointment-${key}`}
           pets={pets}
           doctors={doctors}
+          appointments={appointments}
           onSuccess={() => setOpen(false)}
         />
       )}

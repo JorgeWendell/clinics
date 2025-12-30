@@ -61,7 +61,11 @@ const AppointmentsPage = async () => {
             </PageDescription>
           </PageHeaderContent>
           <PageActions>
-            <AddAppointmentButton pets={pets} doctors={doctors} />
+            <AddAppointmentButton
+              pets={pets}
+              doctors={doctors}
+              appointments={appointments}
+            />
           </PageActions>
         </PageHeader>
         <PageContent>

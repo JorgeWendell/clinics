@@ -407,6 +407,7 @@ const AppointmentsTable = ({
               appointment={editingAppointment || undefined}
               pets={pets}
               doctors={doctors}
+              appointments={appointments}
               onSuccess={() => {
                 setIsEditDialogOpen(false);
                 setEditingAppointment(null);
@@ -425,6 +426,7 @@ const AppointmentsTable = ({
             <RescheduleAppointmentForm
               appointment={reschedulingAppointment || undefined}
               doctors={doctors}
+              appointments={appointments}
               onSuccess={() => {
                 setIsRescheduleDialogOpen(false);
                 setReschedulingAppointment(null);

@@ -5,7 +5,7 @@ import { updateAppointmentSchema } from "./schema";
 import { db } from "@/db";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { actionClient } from "@/lib/next-safe-action";
 import { revalidatePath } from "next/cache";
 
@@ -41,6 +41,48 @@ export const updateAppointment = actionClient
       }
       if (parsedInput.time !== undefined) {
         updateData.time = parsedInput.time;
+      }
+
+      const clinicId = session.user.clinic.id;
+
+      if (updateData.time && updateData.doctorId && updateData.date) {
+        const existingAppointment = await db.query.appointmentsTable.findFirst({
+          where: and(
+            eq(appointmentsTable.doctorId, updateData.doctorId),
+            eq(appointmentsTable.date, updateData.date),
+            eq(appointmentsTable.time, updateData.time),
+            eq(appointmentsTable.clinicId, clinicId)
+          ),
+        });
+
+        if (existingAppointment && existingAppointment.id !== parsedInput.id) {
+          return {
+            error: "Este horário já está ocupado para este médico nesta data.",
+          };
+        }
+      } else if (updateData.time) {
+        const currentAppointment = await db.query.appointmentsTable.findFirst({
+          where: eq(appointmentsTable.id, parsedInput.id),
+        });
+
+        if (currentAppointment) {
+          const existingAppointment = await db.query.appointmentsTable.findFirst(
+            {
+              where: and(
+                eq(appointmentsTable.doctorId, currentAppointment.doctorId),
+                eq(appointmentsTable.date, currentAppointment.date),
+                eq(appointmentsTable.time, updateData.time),
+                eq(appointmentsTable.clinicId, clinicId)
+              ),
+            }
+          );
+
+          if (existingAppointment && existingAppointment.id !== parsedInput.id) {
+            return {
+              error: "Este horário já está ocupado para este médico nesta data.",
+            };
+          }
+        }
       }
 
       await db

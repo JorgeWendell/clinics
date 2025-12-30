@@ -6,6 +6,7 @@ import { db } from "@/db";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { randomUUID } from "crypto";
+import { and, eq } from "drizzle-orm";
 
 import { actionClient } from "@/lib/next-safe-action";
 import { revalidatePath } from "next/cache";
@@ -25,9 +26,24 @@ export const createAppointment = actionClient
       }
 
       const clinicId = session.user.clinic.id;
-      
-      // A data vem como string no formato ISO (YYYY-MM-DD)
-      // O Drizzle aceita strings no formato ISO para o tipo date do PostgreSQL
+
+      if (parsedInput.time) {
+        const existingAppointment = await db.query.appointmentsTable.findFirst({
+          where: and(
+            eq(appointmentsTable.doctorId, parsedInput.doctorId),
+            eq(appointmentsTable.date, parsedInput.date),
+            eq(appointmentsTable.time, parsedInput.time),
+            eq(appointmentsTable.clinicId, clinicId)
+          ),
+        });
+
+        if (existingAppointment) {
+          return {
+            error: "Este horário já está ocupado para este médico nesta data.",
+          };
+        }
+      }
+
       await db.insert(appointmentsTable).values({
         id: randomUUID(),
         date: parsedInput.date,
