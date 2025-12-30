@@ -1,3 +1,5 @@
+"use client";
+
 import { Button } from "@/components/ui/button";
 import {
   DialogContent,
@@ -27,12 +29,13 @@ import {
 import { NumericFormat } from "react-number-format";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+
 import { z } from "zod";
 import { upsertDoctor } from "@/actions/create-clinic/upsert-doctor";
 import { useAction } from "next-safe-action/hooks";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
+import { useForm } from "react-hook-form";
 
 const doctorFormSchema = z
   .object({
@@ -147,7 +150,7 @@ const UpsertDoctorForm = ({ onSuccess }: UpsertDoctorFormProps) => {
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    <SelectItem value="veterinarian">Veterinária</SelectItem>
+                    <SelectItem value="Veterinária">Veterinária</SelectItem>
                   </SelectContent>
                 </Select>
                 <FormMessage />

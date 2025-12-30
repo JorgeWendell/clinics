@@ -9,6 +9,7 @@ import { eq } from "drizzle-orm";
 import { randomUUID } from "crypto";
 
 import { actionClient } from "@/lib/next-safe-action";
+import { revalidatePath } from "next/cache";
 
 export const upsertDoctor = actionClient
   .schema(upsertDoctorSchema)
@@ -45,5 +46,6 @@ export const upsertDoctor = actionClient
         email,
         clinicId,
       });
+      revalidatePath("/doctors");
     }
   });
