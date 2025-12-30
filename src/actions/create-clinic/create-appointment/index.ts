@@ -33,7 +33,7 @@ export const createAppointment = actionClient
             eq(appointmentsTable.doctorId, parsedInput.doctorId),
             eq(appointmentsTable.date, parsedInput.date),
             eq(appointmentsTable.time, parsedInput.time),
-            eq(appointmentsTable.clinicId, clinicId)
+            eq(appointmentsTable.clinicId, clinicId),
           ),
         });
 
@@ -52,9 +52,10 @@ export const createAppointment = actionClient
         doctorId: parsedInput.doctorId,
         clinicId,
       });
-      
+
       revalidatePath("/agendamentos");
-      
+      revalidatePath("/dashboard");
+
       return { success: true };
     } catch (error) {
       console.error("Erro ao criar agendamento:", error);
@@ -66,4 +67,3 @@ export const createAppointment = actionClient
       };
     }
   });
-
