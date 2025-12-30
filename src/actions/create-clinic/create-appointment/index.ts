@@ -31,6 +31,7 @@ export const createAppointment = actionClient
       await db.insert(appointmentsTable).values({
         id: randomUUID(),
         date: parsedInput.date,
+        time: parsedInput.time,
         petId: parsedInput.petId,
         doctorId: parsedInput.doctorId,
         clinicId,

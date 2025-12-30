@@ -42,8 +42,23 @@ import { useEffect, useMemo } from "react";
 import { petsTable, doctorsTable } from "@/db/schema";
 import { Loader2 } from "lucide-react";
 import { createAppointment } from "@/actions/create-clinic/create-appointment";
+import { updateAppointment } from "@/actions/create-clinic/update-appointment";
 import { useAction } from "next-safe-action/hooks";
 import { toast } from "sonner";
+import { appointmentsTable } from "@/db/schema";
+import { useRouter } from "next/navigation";
+
+type Appointment = typeof appointmentsTable.$inferSelect & {
+  pet?: typeof petsTable.$inferSelect & {
+    tutor?: {
+      id: string;
+      name: string;
+      email: string;
+      phone: string;
+    };
+  };
+  doctor?: typeof doctorsTable.$inferSelect;
+};
 
 const appointmentFormSchema = z.object({
   petId: z.string().min(1, { message: "Pet é obrigatório" }),
@@ -56,6 +71,7 @@ const appointmentFormSchema = z.object({
 });
 
 interface UpsertAppointmentFormProps {
+  appointment?: Appointment;
   pets: (typeof petsTable.$inferSelect & {
     tutor?: {
       id: string;
@@ -69,17 +85,21 @@ interface UpsertAppointmentFormProps {
 }
 
 const UpsertAppointmentForm = ({
+  appointment,
   pets,
   doctors,
   onSuccess,
 }: UpsertAppointmentFormProps) => {
+  const router = useRouter();
   const form = useForm<z.infer<typeof appointmentFormSchema>>({
     resolver: zodResolver(appointmentFormSchema),
     defaultValues: {
-      petId: "",
-      doctorId: "",
-      date: undefined,
-      appointmentPriceInCents: 0,
+      petId: appointment?.petId || "",
+      doctorId: appointment?.doctorId || "",
+      date: appointment?.date ? new Date(appointment.date) : undefined,
+      appointmentPriceInCents: appointment?.doctor?.appointmentPriceInCents
+        ? appointment.doctor.appointmentPriceInCents / 100
+        : 0,
       time: "",
     },
   });
@@ -155,7 +175,6 @@ const UpsertAppointmentForm = ({
     return times;
   }, [selectedDoctor, selectedDate]);
 
-  // Atualiza o valor da consulta quando o médico é selecionado
   useEffect(() => {
     if (selectedDoctor) {
       form.setValue(
@@ -165,10 +184,30 @@ const UpsertAppointmentForm = ({
     }
   }, [selectedDoctor, form]);
 
+  useEffect(() => {
+    if (appointment) {
+      form.setValue("petId", appointment.petId);
+      form.setValue("doctorId", appointment.doctorId);
+      if (appointment.date) {
+        form.setValue("date", new Date(appointment.date));
+      }
+      if (appointment.time) {
+        form.setValue("time", appointment.time);
+      }
+      if (appointment.doctor) {
+        form.setValue(
+          "appointmentPriceInCents",
+          appointment.doctor.appointmentPriceInCents / 100,
+        );
+      }
+    }
+  }, [appointment, form]);
+
   const createAppointmentAction = useAction(createAppointment, {
     onSuccess: () => {
       toast.success("Agendamento criado com sucesso");
       form.reset();
+      router.refresh();
       onSuccess?.();
     },
     onError: (error) => {
@@ -176,20 +215,41 @@ const UpsertAppointmentForm = ({
     },
   });
 
-  // Limpa o horário selecionado quando a data ou médico muda
+  const updateAppointmentAction = useAction(updateAppointment, {
+    onSuccess: () => {
+      toast.success("Agendamento atualizado com sucesso");
+      form.reset();
+      router.refresh();
+      onSuccess?.();
+    },
+    onError: (error) => {
+      toast.error("Erro ao atualizar agendamento");
+    },
+  });
+
   useEffect(() => {
     form.setValue("time", "");
   }, [selectedDate, selectedDoctorId, form]);
 
   const onSubmit = async (data: z.infer<typeof appointmentFormSchema>) => {
-    // Converte a data para string ISO (YYYY-MM-DD)
     const dateString = data.date.toISOString().split("T")[0];
 
-    createAppointmentAction.execute({
-      petId: data.petId,
-      doctorId: data.doctorId,
-      date: dateString,
-    });
+    if (appointment?.id) {
+      updateAppointmentAction.execute({
+        id: appointment.id,
+        petId: data.petId,
+        doctorId: data.doctorId,
+        date: dateString,
+        time: data.time,
+      });
+    } else {
+      createAppointmentAction.execute({
+        petId: data.petId,
+        doctorId: data.doctorId,
+        date: dateString,
+        time: data.time,
+      });
+    }
   };
 
   const isDateEnabled = selectedPetId && selectedDoctorId;
@@ -200,9 +260,13 @@ const UpsertAppointmentForm = ({
   return (
     <DialogContent>
       <DialogHeader>
-        <DialogTitle>Novo Agendamento</DialogTitle>
+        <DialogTitle>
+          {appointment ? "Editar Agendamento" : "Novo Agendamento"}
+        </DialogTitle>
         <DialogDescription>
-          Preencha os campos abaixo para criar um novo agendamento.
+          {appointment
+            ? "Altere os campos abaixo para editar o agendamento."
+            : "Preencha os campos abaixo para criar um novo agendamento."}
         </DialogDescription>
       </DialogHeader>
       <Form {...form}>
@@ -365,11 +429,20 @@ const UpsertAppointmentForm = ({
           />
 
           <DialogFooter>
-            <Button type="submit" disabled={createAppointmentAction.isPending}>
-              {createAppointmentAction.isPending && (
+            <Button
+              type="submit"
+              disabled={
+                appointment
+                  ? updateAppointmentAction.isPending
+                  : createAppointmentAction.isPending
+              }
+            >
+              {(appointment
+                ? updateAppointmentAction.isPending
+                : createAppointmentAction.isPending) && (
                 <Loader2 className="size-4 animate-spin" />
               )}
-              Criar Agendamento
+              {appointment ? "Salvar Alterações" : "Criar Agendamento"}
             </Button>
           </DialogFooter>
         </form>

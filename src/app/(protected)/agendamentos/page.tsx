@@ -11,9 +11,10 @@ import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import AddAppointmentButton from "./componentes/add-appointment-button";
-import { petsTable, doctorsTable } from "@/db/schema";
+import { petsTable, doctorsTable, appointmentsTable } from "@/db/schema";
 import { db } from "@/db";
 import { eq } from "drizzle-orm";
+import AppointmentsTable from "./componentes/appointments-table";
 
 const AppointmentsPage = async () => {
   const session = await auth.api.getSession({
@@ -37,6 +38,18 @@ const AppointmentsPage = async () => {
     where: eq(doctorsTable.clinicId, session.user.clinic.id),
   });
 
+  const appointments = await db.query.appointmentsTable.findMany({
+    where: eq(appointmentsTable.clinicId, session.user.clinic.id),
+    with: {
+      pet: {
+        with: {
+          tutor: true,
+        },
+      },
+      doctor: true,
+    },
+  });
+
   return (
     <div>
       <PageContainer>
@@ -52,7 +65,11 @@ const AppointmentsPage = async () => {
           </PageActions>
         </PageHeader>
         <PageContent>
-          {/* Listagem de agendamentos será adicionada posteriormente */}
+          <AppointmentsTable
+            appointments={appointments}
+            pets={pets}
+            doctors={doctors}
+          />
         </PageContent>
       </PageContainer>
     </div>
@@ -60,4 +77,3 @@ const AppointmentsPage = async () => {
 };
 
 export default AppointmentsPage;
-

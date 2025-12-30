@@ -206,6 +206,7 @@ export const tutorTableRelations = relations(tutorsTable, ({ many }) => ({
 export const appointmentsTable = pgTable("appointments", {
   id: text("id").primaryKey(),
   date: date("date").notNull(),
+  time: text("time"),
   petId: text("pet_id")
     .notNull()
     .references(() => petsTable.id, { onDelete: "cascade" }),
