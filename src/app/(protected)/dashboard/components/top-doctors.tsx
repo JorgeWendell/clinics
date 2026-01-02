@@ -5,7 +5,6 @@ import { Card, CardContent, CardTitle } from "@/components/ui/card";
 
 interface TopDoctorsProps {
   doctors: {
-    appointmentsTable: ReactNode;
     id: string;
     name: string;
     avatarImageUrl: string | null;
@@ -48,7 +47,7 @@ export default function DoctorsList({ doctors }: TopDoctorsProps) {
               </div>
               <div className="text-right">
                 <span className="text-muted-foreground text-sm font-medium">
-                  {doctor.appointmentsTable} agend.
+                  {doctor.appointments} agend.
                 </span>
               </div>
             </div>

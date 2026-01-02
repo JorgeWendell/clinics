@@ -20,6 +20,18 @@ import dayjs from "dayjs";
 import AppointmentsChart from "./components/revenue-chart";
 
 import DoctorsList from "./components/top-doctors";
+import { Calendar } from "lucide-react";
+import { Card, CardContent, CardTitle, CardHeader } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { formarCurrencyInCents } from "@/helpers/currency";
+import { ptBR } from "date-fns/locale/pt-BR";
 
 interface DashboardPageProps {
   searchParams: Promise<{
@@ -58,6 +70,7 @@ const DashboardPage = async ({ searchParams }: DashboardPageProps) => {
     [totalPets],
     [totalDoctors],
     topDoctors,
+    todayAppointments,
   ] = await Promise.all([
     db
       .select({
@@ -102,21 +115,36 @@ const DashboardPage = async ({ searchParams }: DashboardPageProps) => {
         name: doctorsTable.name,
         avatarImageUrl: doctorsTable.avatarImageUrl,
         speciality: doctorsTable.speciality,
-        appointmentsTable: count(appointmentsTable.id),
+        appointments: count(appointmentsTable.id),
       })
       .from(doctorsTable)
       .leftJoin(
         appointmentsTable,
         and(
           eq(appointmentsTable.doctorId, doctorsTable.id),
-          gte(appointmentsTable.date, new Date(fromDate)),
-          lte(appointmentsTable.date, new Date(toDate)),
+          gte(appointmentsTable.date, fromDate),
+          lte(appointmentsTable.date, toDate),
         ),
       )
       .where(eq(doctorsTable.clinicId, session.user.clinic.id))
       .groupBy(doctorsTable.id)
       .orderBy(desc(count(appointmentsTable.id)))
       .limit(10),
+    db.query.appointmentsTable.findMany({
+      where: and(
+        eq(appointmentsTable.clinicId, session.user.clinic.id),
+        gte(appointmentsTable.date, fromDate),
+        lte(appointmentsTable.date, toDate),
+      ),
+      with: {
+        pet: {
+          with: {
+            tutor: true,
+          },
+        },
+        doctor: true,
+      },
+    }),
   ]);
 
   const chartStatsDate = format(
@@ -149,6 +177,27 @@ const DashboardPage = async ({ searchParams }: DashboardPageProps) => {
     .groupBy(sql`DATE(${appointmentsTable.date})`)
     .orderBy(sql`DATE(${appointmentsTable.date})`);
 
+  const todayDate = format(new Date(), "yyyy-MM-dd");
+  const todayAppointmentsFiltered = todayAppointments.filter(
+    (appointment) => appointment.date === todayDate,
+  );
+
+  const formatDate = (dateString: string | Date, time?: string | null) => {
+    let date: Date;
+    if (typeof dateString === "string") {
+      const [year, month, day] = dateString.split("-").map(Number);
+      date = new Date(year, month - 1, day);
+    } else {
+      date = dateString;
+    }
+    const formattedDate = format(date, "dd/MM/yyyy", { locale: ptBR });
+    if (time) {
+      const [hour, minute] = time.split(":");
+      return `${formattedDate} ${hour}:${minute}`;
+    }
+    return formattedDate;
+  };
+
   return (
     <PageContainer>
       <PageHeader>
@@ -176,6 +225,63 @@ const DashboardPage = async ({ searchParams }: DashboardPageProps) => {
         <div className="grid grid-cols-[2.25fr_1fr] gap-6">
           <AppointmentsChart dailyAppointmentsData={dailyAppointmentData} />
           <DoctorsList doctors={topDoctors} />
+        </div>
+        <div className="grid grid-cols-[2.25fr_1fr] gap-4">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <Calendar className="text-muted-foreground" />
+                <CardTitle className="text-base">
+                  Agendamentos de hoje
+                </CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Pet</TableHead>
+                    <TableHead>Tutor</TableHead>
+                    <TableHead>Médico</TableHead>
+                    <TableHead>Data/Hora</TableHead>
+                    <TableHead>Preço</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {todayAppointmentsFiltered.length === 0 ? (
+                    <TableRow>
+                      <TableCell
+                        colSpan={5}
+                        className="text-muted-foreground h-24 text-center"
+                      >
+                        Nenhum agendamento para hoje
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    todayAppointmentsFiltered.map((appointment) => (
+                      <TableRow key={appointment.id}>
+                        <TableCell>{appointment.pet?.name || "-"}</TableCell>
+                        <TableCell>
+                          {appointment.pet?.tutor?.name || "-"}
+                        </TableCell>
+                        <TableCell>{appointment.doctor?.name || "-"}</TableCell>
+                        <TableCell>
+                          {formatDate(appointment.date, appointment.time)}
+                        </TableCell>
+                        <TableCell>
+                          {appointment.doctor?.appointmentPriceInCents
+                            ? formarCurrencyInCents(
+                                appointment.doctor.appointmentPriceInCents,
+                              )
+                            : "-"}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
         </div>
       </PageContent>
     </PageContainer>
