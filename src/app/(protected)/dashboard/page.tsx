@@ -1,4 +1,3 @@
-import { Button } from "@/components/ui/button";
 import {
   PageActions,
   PageHeaderContent,
@@ -9,15 +8,9 @@ import {
   PageHeader,
 } from "@/components/ui/page-container";
 import { db } from "@/db";
-import {
-  appointmentsTable,
-  clinicsTable,
-  doctorsTable,
-  petsTable,
-  userToClinicsTable,
-} from "@/db/schema";
+import { appointmentsTable, doctorsTable, petsTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
-import { and, count, eq, gte, lte, sql, sum } from "drizzle-orm";
+import { and, count, desc, eq, gte, lte, sql, sum } from "drizzle-orm";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { addMonths, format } from "date-fns";
@@ -25,7 +18,8 @@ import { DatePicker } from "./components/date-picker";
 import { StatsCards } from "./components/stats-cards";
 import dayjs from "dayjs";
 import AppointmentsChart from "./components/revenue-chart";
-import { sqliteView } from "drizzle-orm/sqlite-core";
+
+import DoctorsList from "./components/top-doctors";
 
 interface DashboardPageProps {
   searchParams: Promise<{
@@ -58,49 +52,72 @@ const DashboardPage = async ({ searchParams }: DashboardPageProps) => {
   const fromDate = format(fromDateValue, "yyyy-MM-dd");
   const toDate = format(toDateValue, "yyyy-MM-dd");
 
-  const [[totalRevenue], [totalAppointments], [totalPets], [totalDoctors]] =
-    await Promise.all([
-      db
-        .select({
-          total: sum(doctorsTable.appointmentPriceInCents),
-        })
-        .from(appointmentsTable)
-        .innerJoin(
-          doctorsTable,
+  const [
+    [totalRevenue],
+    [totalAppointments],
+    [totalPets],
+    [totalDoctors],
+    topDoctors,
+  ] = await Promise.all([
+    db
+      .select({
+        total: sum(doctorsTable.appointmentPriceInCents),
+      })
+      .from(appointmentsTable)
+      .innerJoin(doctorsTable, eq(appointmentsTable.doctorId, doctorsTable.id))
+      .where(
+        and(
+          eq(appointmentsTable.clinicId, session.user.clinic.id),
+          gte(appointmentsTable.date, fromDate),
+          lte(appointmentsTable.date, toDate),
+        ),
+      ),
+    db
+      .select({
+        total: count(),
+      })
+      .from(appointmentsTable)
+      .where(
+        and(
+          eq(appointmentsTable.clinicId, session.user.clinic.id),
+          gte(appointmentsTable.date, fromDate),
+          lte(appointmentsTable.date, toDate),
+        ),
+      ),
+    db
+      .select({
+        total: count(),
+      })
+      .from(petsTable)
+      .where(and(eq(petsTable.clinicId, session.user.clinic.id))),
+    db
+      .select({
+        total: count(),
+      })
+      .from(doctorsTable)
+      .where(and(eq(doctorsTable.clinicId, session.user.clinic.id))),
+    db
+      .select({
+        id: doctorsTable.id,
+        name: doctorsTable.name,
+        avatarImageUrl: doctorsTable.avatarImageUrl,
+        speciality: doctorsTable.speciality,
+        appointmentsTable: count(appointmentsTable.id),
+      })
+      .from(doctorsTable)
+      .leftJoin(
+        appointmentsTable,
+        and(
           eq(appointmentsTable.doctorId, doctorsTable.id),
-        )
-        .where(
-          and(
-            eq(appointmentsTable.clinicId, session.user.clinic.id),
-            gte(appointmentsTable.date, fromDate),
-            lte(appointmentsTable.date, toDate),
-          ),
+          gte(appointmentsTable.date, new Date(fromDate)),
+          lte(appointmentsTable.date, new Date(toDate)),
         ),
-      db
-        .select({
-          total: count(),
-        })
-        .from(appointmentsTable)
-        .where(
-          and(
-            eq(appointmentsTable.clinicId, session.user.clinic.id),
-            gte(appointmentsTable.date, fromDate),
-            lte(appointmentsTable.date, toDate),
-          ),
-        ),
-      db
-        .select({
-          total: count(),
-        })
-        .from(petsTable)
-        .where(and(eq(petsTable.clinicId, session.user.clinic.id))),
-      db
-        .select({
-          total: count(),
-        })
-        .from(doctorsTable)
-        .where(and(eq(doctorsTable.clinicId, session.user.clinic.id))),
-    ]);
+      )
+      .where(eq(doctorsTable.clinicId, session.user.clinic.id))
+      .groupBy(doctorsTable.id)
+      .orderBy(desc(count(appointmentsTable.id)))
+      .limit(10),
+  ]);
 
   const chartStatsDate = format(
     dayjs().subtract(10, "days").startOf("day").toDate(),
@@ -156,8 +173,9 @@ const DashboardPage = async ({ searchParams }: DashboardPageProps) => {
           totalPets={totalPets?.total || 0}
           totalDoctors={totalDoctors?.total || 0}
         />
-        <div className="grid grid-cols-[2.25fr_1fr]">
+        <div className="grid grid-cols-[2.25fr_1fr] gap-6">
           <AppointmentsChart dailyAppointmentsData={dailyAppointmentData} />
+          <DoctorsList doctors={topDoctors} />
         </div>
       </PageContent>
     </PageContainer>
